@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: c-app
+  labels:
+    k8s-app: c-app
+spec:
+  replicas: 4
+  selector:
+    k8s-app: c-app
+  template:
+    metadata:
+      labels:
+        k8s-app: c-app
+    spec:
+      containers:
+      - name: c-app
+        image: atomic80:30005/c-app:v1
+        resources:
+          limits:
+            cpu: 100m
+            memory: 4Mi
+        ports:
+        - containerPort: 8080
+          name: webservice
+          protocol: TCP

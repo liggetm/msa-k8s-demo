@@ -10,7 +10,7 @@
 #include <net/if.h>
 #include <arpa/inet.h>
 
-const char HTMLBEGIN[] = "<html><body><H1>v1.0</H1>";
+const char HTMLBEGIN[] = "<html><body><H1>v2</H1>";
 const char HTMLEND[] = "</body></html>";
 const int bufsize = 1024;
 

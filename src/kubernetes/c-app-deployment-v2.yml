@@ -1,0 +1,23 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: c-app
+spec:
+  replicas: 2
+  minReadySeconds: 20
+  template:
+    metadata:
+      labels:
+        k8s-app: c-app
+    spec:
+      containers:
+      - name: c-app
+        image: atomic80:30005/c-app:v2
+        resources:
+          limits:
+            cpu: 100m
+            memory: 4Mi
+        ports:
+        - containerPort: 8080
+          name: webservice
+          protocol: TCP

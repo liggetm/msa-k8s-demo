@@ -1,40 +1,119 @@
 # msa-k8s-demo
 
-Statically compile the c-app:
+Statically compile the demo c-app:
 ```
-$ gcc server.c -o server
+$ gcc server_v1.c -o server_v1
 ```
-Run the c-app:
+Run the c-app (where en3 is the interface name the webservice should display the IP from):
 ```
-$ ./server en3
+$ ./server_v1 en3
 ```
-(where en3 is the interface name)
 
-Cross-compile the c-app for alpine into the docker folder:
+Cross-compile the c-app for alpine Linux into the docker folder:
 ```
-$ cd src
-$ docker run --rm -v `pwd`:/tmp frolvlad/alpine-gcc gcc --static /tmp/c-app/server.c -o /tmp/docker/server
+$ docker run --rm -v `pwd`:/tmp frolvlad/alpine-gcc gcc --static /tmp/c-app/server_v1.c -o /tmp/docker/server
 ```
 
 Build the docker image:
 ```
-$ cd docker
-$ docker build -t c-app .
+$ docker build -t c-app docker
 ```
 
 Confirm image is available:
 ```
 $ docker images
 
-REPOSITORY                                       TAG                 IMAGE ID            CREATED             SIZE
-c-app-image                                      latest              36e55b910102        6 seconds ago       4.19 MB
+REPOSITORY            TAG                 IMAGE ID            CREATED             SIZE
+c-app                 latest              41e9fd52db08        10 seconds ago      4.19 MB
+frolvlad/alpine-gcc   latest              f487830374fa        4 weeks ago         101 MB
+alpine                latest              4a415e366388        4 weeks ago         3.99 MB
 ```
 
 Run the docker app:
 ```
-$ docker run -p8080:8080 -d --name c-app c-app-image
+$ docker run -p8080:8080 -d --name c-app c-app
 ```
 
-Verify in a browser using: http://localhost:8080
+Verify in a browser using: http://localhost:8080 - you should see the IP address of the docker host itself.
 
-You should see the IP address of the docker host.
+Tag the c-app v1 docker image for the remote registry (in this case on atomic80 port 30005):
+```
+docker tag b2614d4c20cc atomic80:30005/c-app:v1
+```
+
+Deploy the image to the in-cluster docker registry:
+```
+$ kubectl create -f kubernetes/cluster-registry.yml
+```
+
+
+Push the docker image to the remote registry:
+```
+$ docker push atomic80:30005/c-app:v1
+```
+View the images on the remote registry:
+```
+$ docker images atomic80:30005/*
+```
+
+_Now repeat for the version 2 copy of the c-app, changed source file and iterated version info._
+```
+$ docker run --rm -v `pwd`:/tmp frolvlad/alpine-gcc gcc --static /tmp/c-app/server_v2.c -o /tmp/docker/server
+$ docker build -t c-app docker
+$ docker push atomic80:30005/c-app:v2
+```
+
+Deploy the kubernetes c-app v1 in a pod:
+```
+$ kubectl create -f kubernetes/c-app-pod.yml
+```
+Response:
+```
+$ kubectl get pods
+NAME               READY     STATUS    RESTARTS   AGE
+c-app              1/1       Running   0          22s
+cluster-registry   1/1       Running   0          14m
+```
+Deploy the kubernetes service:
+```
+$ kubectl create -f kubernetes/c-app-service.yml
+```
+Remove the pod and deploy the replication controller:
+```
+$ kubectl delete -f kubernetes/c-app-pod.yml
+$ kubectl create -f kubernetes/c-app-rc.yml
+```
+Scale up the number of replicas:
+```
+$ kubectl scale --replicas=8 rc/c-app
+```
+Remove the pod and deploy the replication controller:
+```
+$ kubectl delete -f kubernetes/c-app-rc.yml
+```
+
+Deploy the c-app deployment version 1:
+```
+$ kubectl create -f kubernetes/c-app-deployment.yml --record
+```
+Show the deployments
+```
+$ kubectl get deployments
+```
+
+Now upgrade to version 2:
+```
+$ kubectl apply -f kubernetes/c-app-deployment-v2.yml --record
+```
+Look at the rollout history:
+```
+$ kubectl rollout history deployment c-app
+```
+Scale the deployment:
+```
+$ kubectl scale --replicas=10 deployments/c-app
+```
+Rollback the last rollout:
+```
+$ kubectl rollout undo deployment c-app --record
+```
