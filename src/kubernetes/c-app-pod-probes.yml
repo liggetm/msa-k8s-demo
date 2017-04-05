@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: c-app
+  labels:
+    k8s-app: c-app
+spec:
+  containers:
+  - name: c-app
+    image: atomic80:30005/c-app:v1
+    livenessProbe:
+      failureThreshold: 5
+      httpGet:
+        path: /healthz
+        port: 9080
+        scheme: HTTP
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 5
+    readinessProbe:
+      exec:
+        command:
+        - /bin/true
+      initialDelaySeconds: 10
+      periodSeconds: 5
+    ports:
+    - containerPort: 8080
+      name: webservice
+      protocol: TCP
+    resources:
+      limits:
+        cpu: 100m
+        memory: 4Mi
+  - name: healthz
+    image: gcr.io/google_containers/exechealthz-amd64:1.2
+    resources:
+      limits:
+        memory: 50Mi
+      requests:
+        cpu: 10m
+        memory: 50Mi
+    args:
+    - --cmd=netstat -tlnp | grep -q 8080
+    - --url=/healthz
+    - --port=9080
+    - --quiet
+    ports:
+    - containerPort: 9080
+      name: health
+      protocol: TCP
+  restartPolicy: Always

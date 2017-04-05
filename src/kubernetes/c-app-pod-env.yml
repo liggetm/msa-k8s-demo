@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: c-app
+  labels:
+    k8s-app: c-app
+spec:
+  containers:
+  - image: atomic80:30005/c-app:v1
+    name: c-app
+    ports:
+    - containerPort: 8080
+      name: webservice
+      protocol: TCP
+    resources:
+      limits:
+        cpu: 100m
+        memory: 4Mi
+    env:
+      - name: MY_IP
+        valueFrom:
+          fieldRef:
+            fieldPath: status.podIP
+          # Requires $kubectl create secret generic secret.cookie --from-file=./kubernetes/secret.cookie
+      - name: YUM_YUM
+        valueFrom:
+          secretKeyRef:
+            name: secret.cookie
+            key: secret.cookie
+  restartPolicy: Always
