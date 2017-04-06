@@ -126,7 +126,7 @@ $ kubectl create -f kubernetes/c-app/c-app-service-probes.yml
 
 Create a cluster secret:
 ```
-$ kubectl create secret generic secret.cookie --from-file=kubernetes/secret.cookie
+$ kubectl create secret generic secret.cookie --from-file=kubernetes/c-app/secret.cookie
 ```
 Create a config-map:
 ```
@@ -153,7 +153,7 @@ View the job status:
 ```
 $ kubectl get jobs
 ```
-Delete the job:
+Cleanup:
 ```
 $ kubectl delete -f kubernetes/c-app/c-app-job.yml
 ```
@@ -213,6 +213,10 @@ Rollback the last rollout:
 ```
 $ kubectl rollout undo deployment c-app --record
 ```
+Cleanup:
+```
+$ kubectl delete -f kubernetes/c-app/c-app-deployment-v2.yml
+```
 
 ### Storage
 
@@ -233,7 +237,7 @@ Persist a file on c-app-1:
 $ kubectl exec -it c-app-1 -- touch /data/file
 
 ```
-You should now be able to see that file on the real file system of the node.
+You should now be able to see that file on the real filesystem of the node.
 Delete pod c-app-1:
 ```
 $ kubectl delete pod c-app-1
@@ -242,6 +246,16 @@ It will restart on the same name and you should be able to still see the file:
 ```
 $ kubectl exec -it c-app-1 -- ls /data
 ```
+
+Cleanup:
+```
+$ kubectl delete -f kubernetes/storage/c-app-stateful-set.yml
+$ kubectl create -f kubernetes/storage/pv.yml
+$ kubectl delete pvc my-data-c-app-0
+$ kubectl delete pvc my-data-c-app-1
+```
+To fully cleanup, you need to delete the /var/data/vol* directories.
+
 
 ### External access (not via kubectl proxy)
 
@@ -269,5 +283,12 @@ $ nslookup kubernetes.default.svc.cluster.local 172.26.136.80
 Remove controller pod and create a daemonset:
 ```
 $ kubectl delete -f kubernetes/ingress-udp/ingress-controller-pod.yml
-$ $ kubectl create -f kubernetes/ingress-udp/ingress-controller-ds.yml
+$ kubectl create -f kubernetes/ingress-udp/ingress-controller-ds.yml
+```
+Cleanup:
+```
+$ kubectl delete -f kubernetes/ingress-udp/ingress-controller-ds.yml
+$ kubectl delete -f kubernetes/ingress-udp/ingress-backend-pod.yml
+$ kubectl delete -f kubernetes/ingress-udp/ingress-backend-svc.yml
+$ kubectl delete -f kubernetes/ingress-udp/ingress-dns-config-map.yml
 ```
