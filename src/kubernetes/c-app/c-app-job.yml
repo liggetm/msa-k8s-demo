@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: c-app-job
+spec:
+  template:
+    metadata:
+      name: c-app
+    spec:
+      containers:
+      - name: c-app
+        image: atomic80:30005/c-app:v1
+        command: ["sleep",  "60"]
+      restartPolicy: Never

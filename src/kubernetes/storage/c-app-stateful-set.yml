@@ -1,0 +1,38 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: c-app
+spec:
+  serviceName: c-app
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        k8s-app: c-app
+    spec:
+      containers:
+      - image: atomic80:30005/c-app:v1
+        name: c-app
+        ports:
+        - containerPort: 8080
+          name: webservice
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 100m
+            memory: 4Mi
+        volumeMounts:
+        - name: my-data
+          mountPath: /data
+      nodeSelector:
+        jnpr-color: red
+  volumeClaimTemplates:
+  - metadata:
+      name: my-data
+      annotations:
+        volume.beta.kubernetes.io/storage-class: xyz
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

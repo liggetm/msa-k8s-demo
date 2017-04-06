@@ -1,6 +1,6 @@
 # msa-k8s-demo
 
-My attempt at a full application lifecycle demo for Kubernetes.
+My attempt at a full application lifecycle demo for Kubernetes - hopefully highlighting features available in Kubernetes for application developers.
 
 ## Pre-reqs
 
@@ -79,7 +79,7 @@ $ docker push atomic80:30005/c-app:v2
 
 Deploy the kubernetes c-app v1 in a pod:
 ```
-$ kubectl create -f kubernetes/c-app-pod.yml
+$ kubectl create -f kubernetes/c-app/c-app-pod.yml
 ```
 Response:
 ```
@@ -90,7 +90,7 @@ cluster-registry   1/1       Running   0          14m
 ```
 Deploy a kubernetes service to connect to the app.
 ```
-$ kubectl create -f kubernetes/c-app-service.yml
+$ kubectl create -f kubernetes/c-app/c-app-service.yml
 ```
 On the local system use kubectl proxy to connect to the service:
 ```
@@ -98,22 +98,28 @@ $ kubectl proxy --port=8080 &
 ```
 Now try to browse to the service via the proxy on http://localhost:8080/api/v1/proxy/namespaces/default/services/c-app/
 
+Cleanup:
+```
+$ kubectl delete -f kubernetes/c-app/c-app-pod.yml
+$ kubectl create -f kubernetes/c-app/c-app-service.yml
+```
+
 ### Pod Probes
 
 Deploy the app with probes enabled:
 ```
-$ kubectl create -f kubernetes/c-app-pod-probes.yml
+$ kubectl create -f kubernetes/c-app/c-app-pod-probes.yml
 ```
 Expose the probes using a service:
 ```
-$ kubectl delete -f kubernetes/c-app-service-probes.yml
+$ kubectl delete -f kubernetes/c-app/c-app-service-probes.yml
 ```
 Now browse via the proxy to http://localhost:8080/api/v1/proxy/namespaces/default/services/c-app:9999/healthz - the original service is still running but now on http://localhost:8080/api/v1/proxy/namespaces/default/services/c-app:9998
 
-Remove the pod and service:
+Cleanup:
 ```
-$ kubectl delete -f kubernetes/c-app-pod-probes.yml
-$ kubectl create -f kubernetes/c-app-service-probes.yml
+$ kubectl delete -f kubernetes/c-app/c-app-pod-probes.yml
+$ kubectl create -f kubernetes/c-app/c-app-service-probes.yml
 ```
 
 ### Pod environment variables and secrets
@@ -122,21 +128,45 @@ Create a cluster secret:
 ```
 $ kubectl create secret generic secret.cookie --from-file=kubernetes/secret.cookie
 ```
+Create a config-map:
+```
+$ kubectl create -f kubernetes/c-app/c-app-config-map.yml
+```
 Deploy a pod with variables and secret access:
 ```
-$ kubectl create -f kubernetes/c-app-pod-env.yml
+$ kubectl create -f kubernetes/c-app/c-app-pod-env.yml
+```
+Cleanup:
+```
+$ kubectl delete secret secret.cookie
+$ kubectl delete -f kubernetes/c-app/c-app-config-map.yml
+$ kubectl delete -f kubernetes/c-app/c-app-pod-env.yml
+```
+
+### Jobs
+
+Deploy our c-app sleep job:
+```
+$ kubectl create -f kubernetes/c-app/c-app-job.yml
+```
+View the job status:
+```
+$ kubectl get jobs
+```
+Delete the job:
+```
+$ kubectl delete -f kubernetes/c-app/c-app-job.yml
 ```
 
 ### Replication controllers
 
-Deploy the replication controller:
-```
-$ kubectl create -f kubernetes/c-app-rc.yml
-```
-
 Re-enable the non-probe service:
 ```
-$ kubectl create -f kubernetes/c-app-service.yml
+$ kubectl create -f kubernetes/c-app/c-app-service.yml
+```
+Deploy the replication controller:
+```
+$ kubectl create -f kubernetes/c-app/c-app-rc.yml
 ```
 
 Repeatedly browsing to http://localhost:8080/api/v1/proxy/namespaces/default/services/c-app/ should show different IP addresses.
@@ -151,16 +181,16 @@ kubectl autoscale rc c-app --min=2 --max=8 --cpu-percent=20
 ```
 _Note: this cpu-percent is the target running usage per pod._
 
-Remove the replication controller:
+Cleanup:
 ```
-$ kubectl delete -f kubernetes/c-app-rc.yml
+$ kubectl delete -f kubernetes/c-app/c-app-rc.yml
 ```
 
 ### Deployments
 
 Deploy the c-app deployment version 1:
 ```
-$ kubectl create -f kubernetes/c-app-deployment.yml --record
+$ kubectl create -f kubernetes/c-app/c-app-deployment.yml --record
 ```
 Show the deployments
 ```
@@ -169,7 +199,7 @@ $ kubectl get deployments
 
 Now upgrade to version 2:
 ```
-$ kubectl apply -f kubernetes/c-app-deployment-v2.yml --record
+$ kubectl apply -f kubernetes/c-app/c-app-deployment-v2.yml --record
 ```
 Look at the rollout history:
 ```
@@ -182,4 +212,62 @@ $ kubectl scale --replicas=10 deployments/c-app
 Rollback the last rollout:
 ```
 $ kubectl rollout undo deployment c-app --record
+```
+
+### Storage
+
+Create a persistent volume:
+```
+$ kubectl create -f kubernetes/storage/pv.yml
+```
+Create a stateful set:
+```
+$ kubectl create -f kubernetes/storage/c-app-stateful-set.yml
+```
+View the predictable hostname:
+```
+$ kubectl exec -it c-app-1 -- hostname
+```
+Persist a file on c-app-1:
+```
+$ kubectl exec -it c-app-1 -- touch /data/file
+
+```
+You should now be able to see that file on the real file system of the node.
+Delete pod c-app-1:
+```
+$ kubectl delete pod c-app-1
+```
+It will restart on the same name and you should be able to still see the file:
+```
+$ kubectl exec -it c-app-1 -- ls /data
+```
+
+### External access (not via kubectl proxy)
+
+Already doing nodePort access for the in-cluster registry:
+```
+$ kubectl describe svc cluster-registry
+```
+Configure our ingress backend:
+```
+$ kubectl create -f kubernetes/ingress-udp/ingress-backend-pod.yml
+$ kubectl create -f kubernetes/ingress-udp/ingress-backend-svc.yml
+```
+Configure our settings config-map for the ingress controller:
+```
+$ kubectl create -f kubernetes/ingress-udp/ingress-dns-config-map.yml
+```
+Now start the ingress controller itself:
+```
+$ kubectl create -f kubernetes/ingress-udp/ingress-controller-pod.yml
+```
+Test by running a nslookup for "kubernetes.default.svc.cluster.local" against the host with that the pod is scheduled on, eg:
+```
+$ nslookup kubernetes.default.svc.cluster.local 172.26.136.80
+```
+Remove controller pod and create a daemonset:
+```
+$ kubectl delete -f kubernetes/ingress-udp/ingress-controller-pod.yml
+$ $ kubectl create -f kubernetes/ingress-udp/ingress-controller-ds.yml
 ```

@@ -21,10 +21,16 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: status.podIP
-          # Requires $kubectl create secret generic secret.cookie --from-file=./kubernetes/secret.cookie
+      # Requires $kubectl create secret generic secret.cookie --from-file=./kubernetes/secret.cookie
       - name: YUM_YUM
         valueFrom:
           secretKeyRef:
             name: secret.cookie
             key: secret.cookie
+      # Requires $kubectl create -f kubernetes/c-app-config-map.yml
+      - name: MY_FAV_COOKIE
+        valueFrom:
+          configMapKeyRef:
+            name: c-app-config-map
+            key: fav.cookie
   restartPolicy: Always
