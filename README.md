@@ -4,9 +4,11 @@ My attempt at a full application lifecycle demo for Kubernetes - hopefully highl
 
 ## Pre-reqs
 
-kubectl installed and configured with an appropriate token for cluster access.
+- `kubectl` installed and configured with an appropriate token for working with Kubernetes
+- `gcc` if you want to compile the local app
+- `docker`, ideally natively if you want to build/run the app image (to push to the in-cluster registry you need to configure it as an insecure-registry)
 
-### Local execution (optional)
+### Local app (optional)
 
 Statically compile the demo c-app:
 ```
